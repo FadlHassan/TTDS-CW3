@@ -15,10 +15,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import home
+from search_engine.views import display_song
 
 urlpatterns = [
-    path(r'^admin/', admin.site.urls),
-    path('', home),
-
+    path('admin/', admin.site.urls),
+    path('', display_song),
 ]

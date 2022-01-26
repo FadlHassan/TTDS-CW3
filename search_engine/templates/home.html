@@ -5,6 +5,13 @@
 </head>
 
 <body>
-<p>Hello this is a template</p>
+<p>Songs</p>
+    {% for song in songs %}
+        <p>
+            <br>{{song.Title}}</br>
+            <br>{{song.Artist}}</br>
+            <br>{{song.Lyrics}}</br>
 
+        </p>
+    {% endfor %}
 </body>
