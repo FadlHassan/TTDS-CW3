@@ -2,9 +2,6 @@ import lyricsgenius
 import pandas as pd
 import csv
 
-# Table to save all songs
-All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
-
 def connectToGenius():
     client_access_token = 'v1RaGoN7_VBkkydj6ZpiK9wlaF-CbW-DIf_wgENhQETztCWFLpRyaHfs8THDSMfC'
     LyricsGenius = lyricsgenius.Genius(client_access_token)
@@ -22,18 +19,16 @@ def getArtists():
     artists = list(dict.fromkeys(artists))
     return artists
 
-def getLyrics(LyricsGenius, artists):
+def getLyrics(LyricsGenius, artists, All_Songs_Table):
     Collected_Lyrics = 0 
     for Artist_Name in artists:
         try:
             artist = LyricsGenius.search_artist(Artist_Name, max_songs=100000)
             for song in artist.songs:
-                artist = song.artist
-                title = song.title
                 lyrics = song.lyrics   
-                lyrics.replace(title+' Lyrics', '')   
+                lyrics = lyrics.replace(song.title + ' Lyrics', '')
 
-                All_Songs_Table = All_Songs_Table.append({'artist': artist, 'title':title,'lyrics':lyrics}, ignore_index=True) 
+                All_Songs_Table = All_Songs_Table.append({'artist': song.artist, 'title':song.title,'lyrics':lyrics}, ignore_index=True) 
                 headerList = ['Artist', 'Song', 'Lyrics']
                 
                 lines_written = len(All_Songs_Table.index)
@@ -41,8 +36,10 @@ def getLyrics(LyricsGenius, artists):
         except:
             continue
 
+# Table to save all songs
+All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
 LyricsGenius = connectToGenius()
 artists = getArtists()
-getLyrics(LyricsGenius, artists)
+getLyrics(LyricsGenius, artists, All_Songs_Table)
 
 
