@@ -1,6 +1,7 @@
 import lyricsgenius
 import pandas as pd
 import csv
+import sys
 
 def connectToGenius():
     client_access_token = 'v1RaGoN7_VBkkydj6ZpiK9wlaF-CbW-DIf_wgENhQETztCWFLpRyaHfs8THDSMfC'
@@ -19,11 +20,14 @@ def getArtists():
     artists = list(dict.fromkeys(artists))
     return artists
 
-def getLyrics(LyricsGenius, artists, All_Songs_Table):
+def getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table):
     Collected_Lyrics = 0 
-    for Artist_Name in artists:
+    count = 0
+    cat = artist_cat[int(sys.argv[1])]
+    for i in range(cat[0],cat[1]):
+        Artist_Name = artists[i]
         try:
-            artist = LyricsGenius.search_artist(Artist_Name, max_songs=100000)
+            artist = LyricsGenius.search_artist(Artist_Name, max_songs=100)
             for song in artist.songs:
                 lyrics = song.lyrics   
                 lyrics = lyrics.replace(song.title + ' Lyrics', '')
@@ -40,6 +44,7 @@ def getLyrics(LyricsGenius, artists, All_Songs_Table):
 All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
 LyricsGenius = connectToGenius()
 artists = getArtists()
-getLyrics(LyricsGenius, artists, All_Songs_Table)
+artist_cat = [(0, 225499), (225499, 450998), (450998, 676497), (676497, 901996), (901996, 1127495), (1127495, 1352994)]
+getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table)
 
 
