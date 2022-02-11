@@ -1,55 +1,96 @@
 {% extends "base.html" %}   // Inherits all the components from base template, including the header and footer
 {% load static %}
 {% block content %}
+<link rel="stylesheet" href="{ %static 'css/main2.css' %}">
+<div class="sidenav">
+    <nav class="sidebar close">
+        <header>
+            <div class="image-text">
+                <span class="image">
+                    <img src="{ %static 'images/logo.png' %}" alt="">
+                </span>
 
- <div class="h_nav">
-  <li>
-      <img src="{% static 'images/logo.png' %}" alt="LOGO">
-      <a href="#logo">Dashboard Kit</a>
-  </li>
+                <div class="text logo-text">
+                    <span class="name">Dashboard</span>
+                </div>
+            </div>
 
-  <input type="text" placeholder="Search..">  <li><a href="#Database">Database</a></li>
+            <i class='bx bx-chevron-right toggle'></i>
+        </header>
 
-  <li><img src="{% static '/images/new.png' %}" alt="NOTIFICATIONS"></li>
+        <div class="menu-bar">
+            <div class="menu">
 
-  <li>
-      <a href="#logo">INSERT NAME</a>
-      <img src="{% static '/images/5.png' %}" alt="PROFILE PIC">
-  </li>
+                <!-- <li class="search-box">
+                    <i class='bx bx-search icon'></i>
+                    <input type="text" placeholder="Search...">
+                </li> -->
 
- </div>
+                <ul class="menu-links">
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bx bx-home-alt icon' ></i>
+                            <span class="text nav-text">Dashboard</span>
+                        </a>
+                    </li>
 
- <div class="v_nav">
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bx bx-pie-chart-alt icon' ></i>
+                            <span class="text nav-text">Analytics</span>
+                        </a>
+                    </li>
 
-  <li>
-      <img src="{% static '/images/3. ideas.png' %}" alt="vicon_1"> <!-- missing image, used ideas.png as placeholder -->
-      <a href="#Overview">Overview</a>
-  </li>
+                    <li class="nav-link">
+                        <a href="#">
+                            <i class='bx bx-heart icon' ></i>
+                            <span class="text nav-text">Likes</span>
+                        </a>
+                    </li>
 
-   <li>
-      <img src="{% static '/images/Vector.png' %}" alt="vicon_2">
-      <a href="#Explore">Explore</a>
-  </li>
+                </ul>
+            </div>
 
-   <li>
-      <img src="{% static '/images/3. ideas.png' %}" alt="vicon_3">
-      <a href="#Database">Database</a>
-  </li>
+            <div class="bottom-content">
+                <li class="">
+                    <a href="#">
+                        <i class='bx bx-log-out icon' ></i>
+                        <span class="text nav-text">Logout</span>
+                    </a>
+                </li>
 
-   <li>
-      <img src="{% static '/images/5. agents.png' %}" alt="vicon_4">
-      <a href="#Analytics">Analytics</a>
-  </li>
+                <li class="mode">
+                    <div class="sun-moon">
+                        <i class='bx bx-moon icon moon'></i>
+                        <i class='bx bx-sun icon sun'></i>
+                    </div>
+                    <span class="mode-text text">Dark mode</span>
 
-   <li>
-      <img src="{% static '/images/4. contacts.png' %}" alt="vicon_4">
-      <a href="#History">History</a>
-  </li>
+                    <div class="toggle-switch">
+                        <span class="switch"></span>
+                    </div>
+                </li>
 
-   <li>
-      <img src="{% static '/images/a_1. Ssettings.png' %}" alt="vicon_5">
-      <a href="#Settings">Settings</a>
-   </li>
+            </div>
+        </div>
 
+    </nav>
+
+<!-- SEARCH BAR -->
+
+    <section class="home">
+        <!-- <div class="text">Dashboard Sidebar</div> -->
+        <li class="search-box">
+            <i class='bx bx-search icon'></i>
+            <input type="text" placeholder="Search...">
+
+
+
+        </li>
+    </section>
+
+    <script src="{ %static 'javascript/home.js' %}">
+    </script>
 </div>
+
 {% endblock %}
