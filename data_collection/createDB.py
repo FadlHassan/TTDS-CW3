@@ -1,5 +1,7 @@
 import sqlite3
 from sqlite3 import Error
+import sys
+
 
 def create_connection(db_file):
     """ create a database connection to the SQLite database
@@ -35,7 +37,23 @@ def create_table(conn, create_table_sql):
 # MAIN mehtod for creating the tables
 def main():
 
-    database = r"lyricsDB.db"
+    database = ""
+
+    if(sys.argv[1] == "0"):
+        database = r"lyricsDB_0.db"
+    else if(sys.argv[1] == "1"):
+        database = r"lyricsDB_1.db"
+    else if(sys.argv[1] == "2"):
+        database = r"lyricsDB_2.db"
+    else if(sys.argv[1] == "3"):
+        database = r"lyricsDB_3.db"
+    else if(sys.argv[1] == "4"):
+        database = r"lyricsDB_4.db"
+    else if(sys.argv[1] == "5"):
+        database = r"lyricsDB_5.db"
+    else:
+        print("Wrong argument")
+        System.exit(0)
 
     sql_create_tracks_table = """ CREATE TABLE IF NOT EXISTS tracks (
                                         id integer,
