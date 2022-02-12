@@ -1,5 +1,7 @@
 import sqlite3
 from sqlite3 import Error
+import sys
+
 
 def create_connection(db_file):
     """ create a database connection to the SQLite database
@@ -34,24 +36,30 @@ def create_table(conn, create_table_sql):
 
 # MAIN mehtod for creating the tables
 def main():
-    database = r"C:\sqlite\db\pythonsqlite.db"
 
-    database = r"pythonsqlite.db"
-    
-    sql_create_artists_table = """CREATE TABLE IF NOT EXISTS artists (
-                                    id integer PRIMARY KEY,
-                                    name text NOT NULL
-                                );"""
+    database = ""
+
+    if(sys.argv[1] == "0"):
+        database = r"lyricsDB_0.db"
+    else if(sys.argv[1] == "1"):
+        database = r"lyricsDB_1.db"
+    else if(sys.argv[1] == "2"):
+        database = r"lyricsDB_2.db"
+    else if(sys.argv[1] == "3"):
+        database = r"lyricsDB_3.db"
+    else if(sys.argv[1] == "4"):
+        database = r"lyricsDB_4.db"
+    else if(sys.argv[1] == "5"):
+        database = r"lyricsDB_5.db"
+    else:
+        print("Wrong argument")
+        System.exit(0)
 
     sql_create_tracks_table = """ CREATE TABLE IF NOT EXISTS tracks (
-                                        id integer PRIMARY KEY,
-                                        title text NOT NULL,
-                                        date text,
-                                        genre text,
+                                        id integer,
+                                        title text,
                                         lyrics text,
-                                        picture text,
-                                        artistId integer NOT NULL,
-                                        FOREIGN KEY (artistId) REFERENCES artists (id)
+                                        artist text
                                     ); """
 
     # create a database connection
@@ -59,10 +67,6 @@ def main():
 
     # create tables
     if conn is not None:
-        # create projects table
-        create_table(conn, sql_create_artists_table)
-
-        # create tasks table
         create_table(conn, sql_create_tracks_table)
     else:
         print("Error! cannot create the database connection.")

@@ -8,35 +8,52 @@ import sys
 
 
 def main():
-    database3 = r"lyricsDB.db"
+
+    database = ""
+
+    if(sys.argv[1] == "0"):
+        database = r"lyricsDB_0.db"
+    else if(sys.argv[1] == "1"):
+        database = r"lyricsDB_1.db"
+    else if(sys.argv[1] == "2"):
+        database = r"lyricsDB_2.db"
+    else if(sys.argv[1] == "3"):
+        database = r"lyricsDB_3.db"
+    else if(sys.argv[1] == "4"):
+        database = r"lyricsDB_4.db"
+    else if(sys.argv[1] == "5"):
+        database = r"lyricsDB_5.db"
+    else:
+        print("Wrong argument")
+        System.exit(0)
 
     # Add data to the tables
     
     # create a database connection
-    conn = create_connection(database3)
+    conn = create_connection(database)
 
     with conn:
 
 
-        # # Table to save all songs
+        # Table to save all songs
         # All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
         # LyricsGenius = connectToGenius()
         # artists = getArtists()
         # artist_cat = [(0, 225499), (225499, 450998), (450998, 676497), (676497, 901996), (901996, 1127495), (1127495, 1352994)]
-        # getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table)
+        # getLyrics(LyricsGenius, artists, artist_cat, conn)
         
 
         # # Create new tracks
-        # track_1 = ('Passion Fruit', "Passion fruit lyrics", "Drake")
-        # track_2 = ('Toosie Slide', "Toosie slide lyrics", "Drake")
-        # track_3 = ('Free Smoke', "Free smoke lyrics", "Drake")
+        track_1 = ('Passion Fruit', "Passion fruit lyrics", "Drake")
+        track_2 = ('Toosie Slide', "Toosie slide lyrics", "Drake")
+        track_3 = ('Free Smoke', "Free smoke lyrics", "Drake")
         # track_4 = ('Astroworld', "Astroworld lyrics", "Travis Scott")
         # track_5 = ('London', "London lyrics", "Travis Scott")
 
         # # METHODS TO CREATE Artist & Track
-        # create_track(conn, track_1)
-        # create_track(conn, track_2)
-        # create_track(conn, track_3)
+        create_track(conn, track_1)
+        create_track(conn, track_2)
+        create_track(conn, track_3)
         # create_track(conn, track_4)
         # create_track(conn, track_5)
 
@@ -72,7 +89,7 @@ def getArtists():
     artists = [artist[0] for artist in artists_list[:50000]]
     return artists
 
-def getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table):
+def getLyrics(LyricsGenius, artists, artist_cat, conn):
     Collected_Lyrics = 0 
     count = 0
     cat = artist_cat[int(sys.argv[1])]
@@ -80,19 +97,21 @@ def getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table):
         Artist_Name = artists[i]
 
         try:
-            artist = LyricsGenius.search_artist(Artist_Name, max_songs=100)
+            artist = LyricsGenius.search_artist(Artist_Name, max_songs=10)
             for song in artist.songs:
                 lyrics = song.lyrics   
                 lyrics = lyrics.replace(song.title + ' Lyrics', '')
 
 
                 # add artist & lyrics to DB using the "song" instance
+                track = (song.title, lyrics, song.artist)
+                create_track(conn, track)
 
-                All_Songs_Table = All_Songs_Table.append({'artist': song.artist, 'title':song.title,'lyrics':lyrics}, ignore_index=True) 
-                headerList = ['Artist', 'Song', 'Lyrics']
+                # All_Songs_Table = All_Songs_Table.append({'artist': song.artist, 'title':song.title,'lyrics':lyrics}, ignore_index=True) 
+                # headerList = ['Artist', 'Song', 'Lyrics']
                 
-                lines_written = len(All_Songs_Table.index)
-                All_Songs_Table.iloc[lines_written-1:].to_csv('Songs_Table.csv', mode='a', header=False)
+                # lines_written = len(All_Songs_Table.index)
+                # All_Songs_Table.iloc[lines_written-1:].to_csv('Songs_Table.csv', mode='a', header=False)
         except:
             continue
 
