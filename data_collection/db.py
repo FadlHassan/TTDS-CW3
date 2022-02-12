@@ -65,11 +65,11 @@ def connectToGenius():
     return LyricsGenius
 
 def getArtists():
-    col_list = ['artist_mb']
+    col_list = ['artist_mb', 'scrobbles_lastfm']
     df = pd.read_csv('artists.csv', usecols=col_list)
-    artists = df.values.tolist() 
-    artists = [artist[0] for artist in artists]
-    artists = list(dict.fromkeys(artists))
+    df = df.sort_values(by=['scrobbles_lastfm'], ascending = False)
+    artists_list = df.values.tolist()
+    artists = [artist[0] for artist in artists_list[:50000]]
     return artists
 
 def getLyrics(LyricsGenius, artists, artist_cat,All_Songs_Table):
