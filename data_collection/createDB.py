@@ -34,24 +34,14 @@ def create_table(conn, create_table_sql):
 
 # MAIN mehtod for creating the tables
 def main():
-    database = r"C:\sqlite\db\pythonsqlite.db"
 
-    database = r"pythonsqlite.db"
-    
-    sql_create_artists_table = """CREATE TABLE IF NOT EXISTS artists (
-                                    id integer PRIMARY KEY,
-                                    name text NOT NULL
-                                );"""
+    database = r"lyricsDB.db"
 
     sql_create_tracks_table = """ CREATE TABLE IF NOT EXISTS tracks (
-                                        id integer PRIMARY KEY,
-                                        title text NOT NULL,
-                                        date text,
-                                        genre text,
+                                        id integer,
+                                        title text,
                                         lyrics text,
-                                        picture text,
-                                        artistId integer NOT NULL,
-                                        FOREIGN KEY (artistId) REFERENCES artists (id)
+                                        artist text
                                     ); """
 
     # create a database connection
@@ -59,10 +49,6 @@ def main():
 
     # create tables
     if conn is not None:
-        # create projects table
-        create_table(conn, sql_create_artists_table)
-
-        # create tasks table
         create_table(conn, sql_create_tracks_table)
     else:
         print("Error! cannot create the database connection.")
