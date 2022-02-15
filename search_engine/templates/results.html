@@ -1,10 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{% extends "base.html" %}   // Inherits all the components from base template, including the header and footer
+{% load static %}
+{% block content %}
+<div class="results-container">
+    {% for v in results %}
+        <div class="results-{{c}}">
+        <p class="id-{{ forloop.counter0 }}">{{v.photoid}}</p>
+        <p class="name-{{ forloop.counter0 }}">{{v.name}}</p>
+        <p class="artist-{{ forloop.counter0 }}">{{v.artist}}</p>
+        <p class="genre-{{ forloop.counter0 }}">{{v.genre}}</p>
+        <p class="match-{{ forloop.counter0 }}">{{v.match}}</p>
+        </div>
+    {% endfor %}
+    </div>
+{% endblock %}
