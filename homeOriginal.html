@@ -1,0 +1,54 @@
+{% extends "base.html" %}   // Inherits all the components from base template, including the header and footer
+{% load static %}
+{% block content %}
+ <div class="h_nav">
+  <li>
+      <img src="{% static 'images/logo.png' %}" alt="LOGO">
+      <a href="#logo">Dashboard Kit</a>
+  </li>
+
+  <input type="text" placeholder="Search..">  <li><a href="#Database">Database</a></li>
+
+  <li><img src="{% static '/images/new.png' %}" alt="NOTIFICATIONS"></li>
+
+  <li>
+      <a href="#logo">INSERT NAME</a>
+      <img src="{% static '/images/5.png' %}" alt="PROFILE PIC">
+  </li>
+
+ </div>
+
+ <div class="v_nav">
+
+  <li>
+      <img src="{% static '/images/3. ideas.png' %}" alt="vicon_1"> <!-- missing image, used ideas.png as placeholder -->
+      <a href="#Overview">Overview</a>
+  </li>
+
+   <li>
+      <img src="{% static '/images/Vector.png' %}" alt="vicon_2">
+      <a href="#Explore">Explore</a>
+  </li>
+
+   <li>
+      <img src="{% static '/images/3. ideas.png' %}" alt="vicon_3">
+      <a href="#Database">Database</a>
+  </li>
+
+   <li>
+      <img src="{% static '/images/5. agents.png' %}" alt="vicon_4">
+      <a href="#Analytics">Analytics</a>
+  </li>
+
+   <li>
+      <img src="{% static '/images/4. contacts.png' %}" alt="vicon_4">
+      <a href="#History">History</a>
+  </li>
+
+   <li>
+      <img src="{% static '/images/a_1. Ssettings.png' %}" alt="vicon_5">
+      <a href="#Settings">Settings</a>
+   </li>
+
+</div>
+{% endblock %}
