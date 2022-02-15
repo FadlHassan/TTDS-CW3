@@ -1,7 +1,7 @@
-{% extends "base.html" %}   // Inherits all the components from base template, including the header and footer
+{% extends "home.html" %}   // Inherits all the components from base template, including the header and footer
 {% load static %}
-{% block content %}
-<div class="results-container">
+{% block page %}
+    <div class="results-container">
     {% for v in results %}
         <div class="results-{{c}}">
         <p class="id-{{ forloop.counter0 }}">{{v.photoid}}</p>
