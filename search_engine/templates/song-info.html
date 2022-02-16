@@ -1,0 +1,45 @@
+<!--{% extends "home.html" %}   // Inherits all the components from base template, including the header and footer-->
+<!--{% load static %}-->
+{% block page %}
+
+    <div class="SongTitleDiv">
+        <h1 class="SongTitleText">{{song.title}}</h1>
+        <img src="pic_trulli.jpg" alt="SongImage"> <!-- addme -->
+    </div>
+
+    <div class="song-search-stats">
+
+        <img src="icon-locationnnnnnnn">
+        <div class="search-count-div">
+            <p>Song Searches</p>
+            <p class="search-count">{{song.searches}}</p>
+        </div>
+        <div class="percent-change-search-week">
+            <p class="search-count">{{song.weekdiff}}</p>
+            <p>than last week.</p>
+        </div>
+
+    </div>
+
+    <div class="song-follow-stats">
+
+        <img src="icon-locationnnnnnnn">
+        <div class="follow-count-div">
+            <p>Song Followers</p>
+            <p class="follow-count">{{song.searches}}</p>
+        </div>
+        <div class="percent-change-search-week">
+            <p class="follow-update-status">{{song.weekdiff}}</p>
+            <p>than last week.</p>
+        </div>
+
+    </div>
+
+<!--<div class="graphblock1"> TODO -->
+<!--    -->
+<!--</div>-->
+<!--<div class="graphblock2">-->
+<!--    -->
+<!--</div>-->
+
+{% endblock %}

@@ -11,3 +11,9 @@ def display_search(request, lyric):
     results = [{"photoid":"1", "name":"goerges song", "artist":"ryan kilgour", "genre":"country", "match":"low"}]
 
     return render(request, "results.html", {'results':results})
+
+def display_song(request, songid):
+    songs = Song.objects.all()
+    # results = somefunc(lyrics)
+    song = {"title" : "goerges song", "weekdiff":"+3%", "searches":3000}
+    return render(request, "song-info.html", {"song":song})

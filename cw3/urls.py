@@ -15,11 +15,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from search_engine.views import display_search
+from search_engine.views import display_search, display_song
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     # path('', display_song),
     path('search/<str:lyric>', display_search),
+    path('results/<int:songid>', display_song),
 
 ]
