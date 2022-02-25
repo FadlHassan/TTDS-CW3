@@ -76,21 +76,30 @@
 
     </nav>
 
-<!-- SEARCH BAR -->
 
-    <section class="home">
-        <!-- <div class="text">Dashboard Sidebar</div> -->
-        <li class="search-box">
-            <i class='bx bx-search icon'></i>
-            <input type="text" placeholder="Search...">
+</div>
 
+ <div class="h_nav">
+<!--  <li>-->
+<!--      <img src="{% static 'images/logo.png' %}" alt="LOGO">-->
+<!--      <a href="#logo">Dashboard Kit</a>-->
+<!--  </li>-->
 
+  <input type="text" placeholder="Search..">  <li><a href="#Database">Database</a></li>
 
-        </li>
-    </section>
+  <li><img src="{% static '/images/new.png' %}" alt="NOTIFICATIONS"></li>
 
+  <li>
+      <a href="#logo">INSERT NAME</a>
+      <img src="{% static '/images/5.png' %}" alt="PROFILE PIC">
+  </li>
+
+ </div>
     <script src="{% static 'javascript/home.js' %}">
     </script>
-</div>
+
+{% block page %}
+
+{% endblock %}
 
 {% endblock %}

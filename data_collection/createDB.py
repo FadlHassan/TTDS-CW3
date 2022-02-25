@@ -59,6 +59,8 @@ def main():
         database = r"lyricsDB_8.db"
     elif(sys.argv[1] == "9"):
         database = r"lyricsDB_9.db"
+    elif(sys.argv[1] == "total"):
+        database = r"lyricsDB.db"
     else:
         print("Wrong argument")
         System.exit(0)
