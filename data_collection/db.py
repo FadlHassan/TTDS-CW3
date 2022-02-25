@@ -13,16 +13,24 @@ def main():
 
     if(sys.argv[1] == "0"):
         database = r"lyricsDB_0.db"
-    else if(sys.argv[1] == "1"):
+    elif(sys.argv[1] == "1"):
         database = r"lyricsDB_1.db"
-    else if(sys.argv[1] == "2"):
+    elif(sys.argv[1] == "2"):
         database = r"lyricsDB_2.db"
-    else if(sys.argv[1] == "3"):
+    elif(sys.argv[1] == "3"):
         database = r"lyricsDB_3.db"
-    else if(sys.argv[1] == "4"):
+    elif(sys.argv[1] == "4"):
         database = r"lyricsDB_4.db"
-    else if(sys.argv[1] == "5"):
+    elif(sys.argv[1] == "5"):
         database = r"lyricsDB_5.db"
+    elif(sys.argv[1] == "6"):
+        database = r"lyricsDB_6.db"
+    elif(sys.argv[1] == "7"):
+        database = r"lyricsDB_7.db"
+    elif(sys.argv[1] == "8"):
+        database = r"lyricsDB_8.db"
+    elif(sys.argv[1] == "9"):
+        database = r"lyricsDB_9.db"
     else:
         print("Wrong argument")
         System.exit(0)
@@ -36,24 +44,26 @@ def main():
 
 
         # Table to save all songs
-        # All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
-        # LyricsGenius = connectToGenius()
-        # artists = getArtists()
-        # artist_cat = [(0, 225499), (225499, 450998), (450998, 676497), (676497, 901996), (901996, 1127495), (1127495, 1352994)]
-        # getLyrics(LyricsGenius, artists, artist_cat, conn)
+        All_Songs_Table = pd.DataFrame(columns=['artist','title','lyrics'])
+        LyricsGenius = connectToGenius()
+        artists = getArtists()
+        artist_cat = [(0, 5000), (5000, 10000), (10000, 15000), (15000, 20000), 
+                        (20000, 25000), (25000, 30000), (30000, 35000), 
+                        (35000, 40000), (40000, 45000), (45000, 50000)]
+        getLyrics(LyricsGenius, artists, artist_cat, conn)
         
 
-        # # Create new tracks
-        track_1 = ('Passion Fruit', "Passion fruit lyrics", "Drake")
-        track_2 = ('Toosie Slide', "Toosie slide lyrics", "Drake")
-        track_3 = ('Free Smoke', "Free smoke lyrics", "Drake")
-        # track_4 = ('Astroworld', "Astroworld lyrics", "Travis Scott")
-        # track_5 = ('London', "London lyrics", "Travis Scott")
+        # # # Create new tracks
+        # track_1 = ('Passion Fruit', "Passion fruit lyrics", "Drake")
+        # track_2 = ('Toosie Slide', "Toosie slide lyrics", "Drake")
+        # track_3 = ('Free Smoke', "Free smoke lyrics", "Drake")
+        # # track_4 = ('Astroworld', "Astroworld lyrics", "Travis Scott")
+        # # track_5 = ('London', "London lyrics", "Travis Scott")
 
-        # # METHODS TO CREATE Artist & Track
-        create_track(conn, track_1)
-        create_track(conn, track_2)
-        create_track(conn, track_3)
+        # # # METHODS TO CREATE Artist & Track
+        # create_track(conn, track_1)
+        # create_track(conn, track_2)
+        # create_track(conn, track_3)
         # create_track(conn, track_4)
         # create_track(conn, track_5)
 
@@ -97,7 +107,7 @@ def getLyrics(LyricsGenius, artists, artist_cat, conn):
         Artist_Name = artists[i]
 
         try:
-            artist = LyricsGenius.search_artist(Artist_Name, max_songs=10)
+            artist = LyricsGenius.search_artist(Artist_Name, max_songs=100)
             for song in artist.songs:
                 lyrics = song.lyrics   
                 lyrics = lyrics.replace(song.title + ' Lyrics', '')

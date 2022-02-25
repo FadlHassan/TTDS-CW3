@@ -41,16 +41,24 @@ def main():
 
     if(sys.argv[1] == "0"):
         database = r"lyricsDB_0.db"
-    else if(sys.argv[1] == "1"):
+    elif(sys.argv[1] == "1"):
         database = r"lyricsDB_1.db"
-    else if(sys.argv[1] == "2"):
+    elif(sys.argv[1] == "2"):
         database = r"lyricsDB_2.db"
-    else if(sys.argv[1] == "3"):
+    elif(sys.argv[1] == "3"):
         database = r"lyricsDB_3.db"
-    else if(sys.argv[1] == "4"):
+    elif(sys.argv[1] == "4"):
         database = r"lyricsDB_4.db"
-    else if(sys.argv[1] == "5"):
+    elif(sys.argv[1] == "5"):
         database = r"lyricsDB_5.db"
+    elif(sys.argv[1] == "6"):
+        database = r"lyricsDB_6.db"
+    elif(sys.argv[1] == "7"):
+        database = r"lyricsDB_7.db"
+    elif(sys.argv[1] == "8"):
+        database = r"lyricsDB_8.db"
+    elif(sys.argv[1] == "9"):
+        database = r"lyricsDB_9.db"
     else:
         print("Wrong argument")
         System.exit(0)
