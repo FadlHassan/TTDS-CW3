@@ -1,512 +1,716 @@
-import re
-from nltk.stem import PorterStemmer
-import random
-import pandas as pd
-import numpy as np 
-import math
-from gensim.models.ldamodel import LdaModel
-from gensim.corpora.dictionary import Dictionary
-from collections import Counter
-import string
-from scipy.sparse import dok_matrix
+import os
 import csv
-import sklearn
-from sklearn import svm
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
+import math
+import sys, re
+import numpy as np
+from scipy.sparse import dok_matrix
+import random
+from collections import Counter
+from stemming.porter2 import stem
+from gensim.corpora.dictionary import Dictionary
+from gensim.models import LdaModel
+# from sklearn.svm import LinearSVC
+from sklearn.svm import SVC, LinearSVC
 
-stemmer = PorterStemmer()
-stopWords = open("englishST.txt").readlines() #loading stop words
-stopWordsList = [x.replace("\n", "") for x in stopWords]
+# ----------- METHODS START -----------
 
-systemResults = open('system_results.csv', 'r')
-Qrels = open('qrels.csv','r')
-system_number,query_number,doc_number,rank_of_doc,score = ([] for i in range(5))
-query_id,doc_id,relevance = ([] for i in range(3))
-system_results = []
-qrels = []
-#reading the system_results file
-file = csv.DictReader(systemResults)
-for col in file:
-    system_number.append(col['system_number'])
-    query_number.append(col['query_number'])
-    doc_number.append(col['doc_number'])
-    rank_of_doc.append(col['rank_of_doc'])
-    score.append(col['score'])
-system_number = [ int(x) for x in system_number ]
-system_results.append(system_number)
-query_number = [ int(x) for x in query_number ]
-system_results.append(query_number)
-doc_number = [ int(x) for x in doc_number ]
-system_results.append(doc_number)
-rank_of_doc = [ int(x) for x in rank_of_doc ]
-system_results.append(rank_of_doc)
-score = [ int(x) for x in score ]
-system_results.append(score)
+# Method for case folding
+def caseFolding(text):
+    return re.sub(r'[^\w\s]|_', " ", text).lower().split()
 
-#reading the qrels file
-file = csv.DictReader(Qrels)
-for col in file:
-    query_id.append(col['query_id'])
-    doc_id.append(col['doc_id'])
-    relevance.append(col['relevance'])
-query_id = [ int(x) for x in query_id ]
-qrels.append(query_id)
-doc_id = [ int(x) for x in doc_id ]
-qrels.append(doc_id)
-relevance = [ int(x) for x in relevance ]
-qrels.append(relevance)
+# Method for stopping
+def stopping(lst, stopWords):
+    for stopWord in stopWords:
+            if stopWord in lst:
+                lst = list(filter((stopWord).__ne__, lst))
+    return lst
 
-system_result = np.array(system_results).T.tolist()
-qrels = np.array(qrels).T.tolist()
+# Method for stemming
+def stemming(lst):
+    return [stem(token) for token in lst]
 
-punctuations = re.compile(f'[{string.punctuation}]')
-trainData = pd.read_csv("train_and_dev.tsv",header = None,sep = "\t",quoting = csv.QUOTE_NONE)
-test = pd.read_csv("test.tsv",header = None,sep = "\t",quoting = csv.QUOTE_NONE)
+# Method to calculate precision
+def calcPricision(q, docsReturned, relDocs, cutOff):
+    count = sum([1 for doc in docsReturned if doc in relDocs[q]])
+    return count/cutOff
 
-def ldaModel(quranCorpus,ntCorpus,otCorpus): #calculates the LDA scores
-    corpusList = [quranCorpus,ntCorpus,otCorpus]
-    totalCorpus = quranCorpus + ntCorpus + otCorpus
-    listOfDics = []
-    corpusDic = Dictionary(totalCorpus)
-    corpusDic.filter_extremes(no_below = 50, no_above = 0.1)
-    corpus = [corpusDic.doc2bow(c) for c in totalCorpus]
-    lda = LdaModel(corpus , num_topics = 20, id2word = corpusDic, random_state = 1)
-    for c in corpusList:
-        dic = Dictionary(c)
-        dic.filter_extremes(no_below=50, no_above=0.1)
-        c1 = [dic.doc2bow(text) for text in c]
-        cTopics = lda.get_document_topics(c1)
-        tempDic = {}
-        for doc in cTopics:
-            for t in doc:
-                if t[0] not in tempDic:
-                    tempDic[t[0]] = t[1]
-                else:
-                    tempDic[t[0]] += t[1]
-        listOfDics.append(tempDic)
-    topicDicQuran = listOfDics[0]
-    topicDicNT = listOfDics[1]
-    topicDicOT = listOfDics[2]
-    for i, j in topicDicQuran.items():
-        topicDicQuran[i] = j / len(quranCorpus)
-    for i, j in topicDicNT.items():
-        topicDicNT[i] = j / len(ntCorpus)
-    for i, j in topicDicOT.items():
-        topicDicOT[i] = j / len(otCorpus)
-    return lda , topicDicQuran, topicDicNT, topicDicOT
+# Method to calculate recall
+def calcRecall(q, docsReturned, relDocs):
+    count = sum([1 for doc in docsReturned if doc in relDocs[q]])
+    return count/len(relDocs[q])
 
-def preprocessForSVM(data): #preprocesses data for task classiciation by removing punctuations and converting to lower case
-    vocab = set([])
-    docs =[]
-    cats = []
-    for index,row in data.iterrows():
-        corpus,text = row[0] , row[1]
-        words = punctuations.sub("",text).lower().split()
-        for w in words:
-            vocab.add(w)
-        docs.append(words)
-        cats.append(corpus)
-    return docs,cats,vocab
+# Method to calculate DCG@k
+def calcDCG_k(docsReturned, gainPerDocReturned):
+    dg = 0
+    dcg_k = 0
+    for i in range(len(docsReturned)):
+        doc = docsReturned[i]
+        gain = gainPerDocReturned[doc]
+        
+        if(i == 0 or i == 1):
+            dg = gain
+        else:
+            dg = gain/math.log2(i+1)
+        
+        dcg_k += dg
+        # print('DG: ', dg, ' DCG@k: ', dcg_k)
 
-def splitTrainAndDev(categories,preprocessedData): #splits the data into train(90%) and dev(10%) sets
-    trainData = []
-    trainCategories = []
-    devData = []
-    devCategories = []
-    random.seed(0)
-    devIndex = [random.randint(0, len(preprocessedData)) for i in range(round(len(preprocessedData) * 0.1) )]
-    for i in devIndex:
-        devData.append(preprocessedData[i])
-        devCategories.append(categories[i])
-    trainIndex = [i for i in range(len(preprocessedData)) if i not in devIndex]
-    for i in trainIndex:
-        trainData.append(preprocessedData[i])
-        trainCategories.append(categories[i])
-    return trainData,trainCategories,devData,devCategories,devIndex
+    return dcg_k
 
-def calculateMI(N,n00,n01,n10,n11):
-    mi = n11 / N * math.log2(float(N * n11) / float((n10 + n11) * (n01 + n11))) + n01 / N * math.log2(float(N * n01) / float((n00 + n01) * (n01 + n11))) + n00 / N * math.log2(float(N * n00) / float((n00 + n01) * (n00 + n10)))
-    return mi
+# Method to calculate nDCG
+def calcNDCG(docsReturned, relevancePerDocs):
+    # print('--------- Inside DCG ---------')
+    # print('Docs returned: ', docsReturned)
+    # print('Relevance per doc: ', relevancePerDocs)
 
-def scoreCorpus(totalDic,corpusDic,quranCorpus,ntCorpus,otCorpus): #returns the MI and chi-square scores of each corpus
-    MI = {}
-    chiSquare = {}
-    if corpusDic == ntDic:
-        X = Counter(quranDic)
-        Y = Counter(otDic)
-        xyDic = dict(X + Y)
-        lenCorpus = len(ntCorpus)
-        lenOther = len(quranCorpus) + len(otCorpus)
-    elif corpusDic == quranDic:
-        X = Counter(otDic)
-        Y = Counter(ntDic)
-        xyDic = dict(X + Y)
-        lenCorpus = len(quranCorpus)
-        lenOther = len(ntCorpus) + len(otCorpus)
-    else:
-        X = Counter(quranDic)
-        Y = Counter(ntDic)
-        xyDic = dict(X + Y)
-        lenCorpus = len(otCorpus)
-        lenOther = len(ntCorpus) + len(quranCorpus)
-    N = lenCorpus + lenOther
-    for key in totalDic.keys():
-        if key in corpusDic.keys():
-            n11 = corpusDic[key]
-            n01 = lenCorpus - n11
-            if key not in xyDic:
-                n00 = lenOther
-                n10 = 0
-                mi = calculateMI(N,n00,n01,n10,n11)
+    gainPerDocReturned = {}
+    relevantDocs = {}
+    
+    # creating a dictionary for relevant docs and their gains
+    for (a,b) in relevancePerDocs:
+        relevantDocs[a] = b
+
+    for doc in docsReturned:
+        if(doc in relevantDocs):
+            gainPerDocReturned[doc] = relevantDocs[doc]
+        else:
+            gainPerDocReturned[doc] = 0
+
+    # print('Table: ', gainPerDocReturned)
+
+    dg = 0
+    dcg_k = 0
+
+    # print("DCG --")
+    dcg_k = calcDCG_k(docsReturned, gainPerDocReturned)
+    # print('DCG@10: ', dcg_k)
+
+    idg = 0
+    idcg_k = 0
+
+    # score (or gains) of the relevant docs
+    gains = [rel for (doc, rel) in relevancePerDocs]
+    gains.sort(reverse = True)
+
+    l = len(docsReturned)
+    if(len(gains) < l):
+        gains = gains + [0]*(l-len(gains))
+    elif(len(gains) > l):
+        gains = gains[:l]
+    # print('Gains: ', gains)
+
+    for i in range(len(gains)):
+        gain = gains[i]
+        if(i == 0):
+            idg = gain
+        else:
+            idg = gain/math.log2(i+1)
+        idcg_k += idg
+        # print('Rank: ', i, ' Gain: ', gain, 'iDG: ', idg, ' iDCG@k: ', idcg_k)
+
+    # print('iDCG@10: ', idcg_k)
+
+    ndcg_k = 0
+    if(idcg_k != 0):
+        ndcg_k = dcg_k/idcg_k
+    # print('nDCG@10: ', ndcg_k)
+    return ndcg_k
+
+# Method to calculate the mean of a list
+def calcMean(lst):
+    return sum(lst)/len(lst)
+
+# Method to calculate means for all the systems
+def calcMeans(a, b, c, d, e, f):
+    means = []
+    low = 0
+    high = 10
+    for i in range(6):
+        lst = [round(calcMean(a[low:high]), 3), round(calcMean(b[low:high]), 3), round(calcMean(c[low:high]), 3), round(calcMean(d[low:high]), 3), round(calcMean(e[low:high]), 3), round(calcMean(f[low:high]), 3)]
+        means.append(lst)
+        low += 10
+        high += 10
+    return means
+
+# Method to generate the ir_eval.csv file
+def generateIR_EVAL_File(a, b, c, d, e, f):
+    print('---- Generating the file -----')
+    i = 0
+    systems = 6 # number of systems
+    queries = 11 # number of queries
+    means = calcMeans(a, b, c, d, e, f)
+    rows = [['system_number', 'query_number', 'P@10', 'R@50', 'r-precision', 'AP', 'nDCG@10', 'nDCG@20']]
+    
+    # creating the rows
+    for systemNum in range(1, (systems + 1)):
+        for queryNum in range(1, (queries + 1)):
+            if(queryNum == 11):
+                row = [systemNum, 'mean'] + means[systemNum-1]
             else:
-                n10 = xyDic[key]
-                n00 = lenOther - n10
-                mi = calculateMI(N,n00,n01,n10,n11)
-        else:
-            n01 = lenCorpus
-            n11 = 0
-            n10 = xyDic[key]
-            n00 = lenOther - n10
-            mi = n01/N*math.log2(float(N*n01) / float((n00+n01)*(n01+n11))) + n10/N*math.log2(float(N*n10) / float((n10+n11)*(n00+n10))) + n00/N*math.log2(float(N*n00) / float((n00+n01)*(n00+n10)))
-        MI[key] = mi
+                row = [systemNum, queryNum, round(a[i], 3), round(b[i], 3), round(c[i], 3), round(d[i], 3), round(e[i], 3), round(f[i], 3)]
+                i += 1
+            rows.append(row)
 
-        chi = ((n11 + n10 + n01 + n00) * math.pow((n11 * n00 - n10 * n01),2)) / ((n11 + n01) * (n11 + n10) * (n10 + n00) * (n01 + n00))
-        chiSquare[key] = chi
-    return MI,chiSquare
+    # open the file in the write mode
+    with open('ir_eval.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        # writing to the file
+        writer.writerows(rows)
 
-def incorrect(predVals,trueVals): #returns a list of incorrect predictions
-    incorrectVals = []
-    for i in range(len(predVals)):
-        if predVals[i]  != trueVals[i]:
-            incorrectVals.append(i)
-    return incorrectVals
+# Method for Task 1 - IR EVALUATION
+def EVAL(loc_qrels, loc_system_results):
+    print('----- Starting IR Evaluation -----')
 
-def precisionRecallF1(y,yHat,category,cat2id): #calculates the precission,recall and f1 scores
-    truePositive = np.sum(np.logical_and(np.equal(y, cat2id[category]), np.equal(yHat, cat2id[category])))
-    falsePositive = np.sum(np.logical_and(np.not_equal(y, cat2id[category]), np.equal(yHat, cat2id[category])))
-    trueNegative = np.sum(np.logical_and(np.not_equal(y, cat2id[category]), np.not_equal(yHat, cat2id[category])))
-    falseNegative = np.sum(np.logical_and(np.equal(y, cat2id[category]), np.not_equal(yHat, cat2id[category])))
-    precision = round((truePositive/(truePositive+falsePositive)),3)
-    recall = round((truePositive/(truePositive+falseNegative)),3)
-    f1 = (2 * precision * recall) / (precision+recall)
-    return precision , recall , f1
+    relDocs = {}
+    relevancePerQueryPerDoc = {}
+    for q in range(1, 11):
+        relDocs[q] = []
+        relevancePerQueryPerDoc[q] = []
 
-def accuracy(y,yHat,cat2id): #calculates the model accuracies
-    precisionQuran,recallQuran,f1Quran = precisionRecallF1(y,yHat,"Quran",cat2id)
-    precisionOT,recallOT,f1OT = precisionRecallF1(y,yHat,"OT",cat2id)
-    precisionNT,recallNT,f1NT = precisionRecallF1(y,yHat,"NT",cat2id)
-    precissionMacro = round((precisionQuran + precisionOT + precisionNT) / 3 , 3)
-    precissionMacro = round((precisionQuran + precisionOT + precisionNT) / 3 , 3)
-    recallMacro = round((recallQuran + recallOT + recallNT) / 3 , 3)
-    f1Macro = round((f1Quran + f1OT + f1NT) / 3 , 3)
-    accuracies = [str(precisionQuran), str(recallQuran), str(f1Quran),
-                  str(precisionNT), str(recallNT), str(f1NT),
-                  str(precisionOT), str(recallOT), str(f1OT),
-                  str(precissionMacro), str(recallMacro), str(f1Macro)]
-    return accuracies
 
-def preprocessCorpus(data): #splits the corpora into Quran, NT and OT
-    quranDic = {}
-    newTestamentDic = {}
-    oldTestamentDic = {}
-    quranCorpus = []
-    newTestamentCorpus = []
-    oldTestamentCorpus = []
-    for index,row in data.iterrows():
-        corpus,text = row[0] , row[1]
-        preprocessedTerms = preProcessing(text)
-        if corpus == "OT":
-            oldTestamentCorpus.append(preprocessedTerms)
-            for t in set(preprocessedTerms):
-                if t not in oldTestamentDic:
-                    oldTestamentDic[t] = 1
-                else:
-                    oldTestamentDic[t] += 1
-        elif corpus == "Quran":
-            quranCorpus.append(preprocessedTerms)
-            for t in set(preprocessedTerms):
-                if t not in quranDic:
-                    quranDic[t] = 1
-                else:
-                    quranDic[t] += 1
-        else:
-            newTestamentCorpus.append(preprocessedTerms)
-            for t in set(preprocessedTerms):
-                if t not in newTestamentDic:
-                    newTestamentDic[t] = 1
-                else:
-                    newTestamentDic[t] += 1
-    return quranDic,newTestamentDic,oldTestamentDic,quranCorpus,newTestamentCorpus,oldTestamentCorpus
+    # reading the qrels.csv file
+    with open(loc_qrels, mode='r') as csv_file:
+        qrels = csv.DictReader(csv_file)
+        for row in qrels:
+            q = int(row['query_id'])
+            doc = int(row['doc_id'])
+            relevance = int(row['relevance'])
 
-def preProcessing(document): #preprocesses data (same as coursework 1)
-    tokens = re.sub(r"[^\w]+", " ", document).lower() #tokenisation
-    tokenisation = tokens.split(" ")
-    stoppedWords = [word for word in tokenisation if word not in stopWordsList and word != ""] #stop word removal
-    terms = [stemmer.stem(word) for word in stoppedWords] #stemming
-    return terms
+            relDocs[q].append(doc)
+            relevancePerQueryPerDoc[q].append((doc, relevance))
 
-def Eval(system_results,qrels): #calculates the ir eval values for the different metrics
-    irEval = pd.DataFrame(columns=["system_number","query_number","P@10","R@50","r-precision","AP","nDCG@10","nDCG@20"])
-    for num in range(1,7):
-        l = [i for i in system_results if i[0] ==num]
-        qNo = [i[1] for i in l]
-        qrDic = dict(Counter(qNo))
-        subSystemResults = [i for i in system_results if i[0] ==num]
-        irEvalDF = pd.DataFrame(columns=["system_number","query_number"])
-        irEvalDF["query_number"] = np.array(range(1,11))
-        irEvalDF["system_number"] = np.ones((10,1))*num
-        P_10,R_50,r_precision,AP,nDCG_10,nDCG_20 = ([] for i in range(6))
-        index = 0
-        for i in range(1,11):
-            q = [j[1] for j in qrels if i[0] == i]
 
-            P10Result = [j[2] for j in range subSystemResults[index:index+10]]
-            P10Result = set(P10Result)
-            P_10.append(len(P10Result & set(q)) / 10)
+    resultsPrecision = []
+    resultsRecall = []
+    resultsRPrecision = []
 
-            R50Result = [j[2] for j in range subSystemResults[index:index+50]]
-            R50Result = set(R50Result)
-            R_50.append(len(R50Result & set(q)) / len(q))
+    precisions = []
+    resultsAP = []
 
-            rPresicionResult = [j[2] for j in range subSystemResults[index:index + len(q)]]
-            rPresicionResult = set(rPresicionResult)
-            r_precision.append(len(rPresicionResult & set(q)) / len(q))
+    resultsNDCG_10 = []
+    resultsNDCG_20 = []
 
-            APresult = [j for j in range subSystemResults[index:index+qrDic[i]]
-            tempList = []
-            for doc in q:
-                apr = [j[2] for j in APresult]
-                if doc in apr:
-                    tempList.append(int([j[3] for j in APresult if j[2] == doc][0]))
-            c = 1
-            total = 0
-            for j in sorted(tempList):
-                total += c / j
-                c += 1
-            AP.append(total/len(q))
+    dgs = []
+    resultsDCG = []
+
+    precisionAllowedRanks = [i for i in range(1, 11)]
+    recallAllowedRanks = [i for i in range(1, 51)]
+    rPrecisionAllowedRanks = []
+
+    dcg10AllowedRanks = [i for i in range(1, 11)]
+    # print('DCG 10 allowed ranks: ', dcg10AllowedRanks)
+    dcg20AllowedRanks = [i for i in range(1, 21)]
+
+    readDocsCount, relDocsCount = 0, 0
+
+    # reading the systems_results.csv file
+    with open(loc_system_results, mode='r') as csv_file:
+        systemResults = csv.DictReader(csv_file)
+
+        s = 1
+        currLstPrecision = []
+        currLstRecall = []
+        currLstRPrecision = []
+        origQ = 1
+        currLstnDCG_10 = []
+        currLstnDCG_20 = []
+
+        # Simultaneously calculating all the metrics
+        for row in systemResults:
+
+            rank = int(row['rank_of_doc'])
+            currQ = int(row['query_number'])
+            docReturned = int(row['doc_number'])
+
+            rPrecisionAllowedRanks = [i for i in range(1, len(relDocs[currQ])+1)]
+            # print('------------------------------------')
+            # print('Curr rank: ', rank)
+            # print('Curr Query: ', currQ)
+
+            # print('Len of rel docs: ', len(relDocs[currQ]))
+            # print('Doc returned: ', docReturned)
+
+            # PRECISION@10
+            if(rank in precisionAllowedRanks):
+                currLstPrecision.append(docReturned)
+            elif(rank == 11):
+                resultsPrecision.append(calcPricision(currQ, currLstPrecision, relDocs, 10))
+                currLstPrecision = []
+
+            # RECALL@50
+            if(rank in recallAllowedRanks):
+                currLstRecall.append(docReturned)
+            elif(rank == 51):
+                resultsRecall.append(calcRecall(currQ, currLstRecall, relDocs))
+                currLstRecall = []
+
+            # R-PRECISION
+            if(rank in rPrecisionAllowedRanks):
+                # print('Add doc --')
+                currLstRPrecision.append(docReturned)
+            elif(rank == (rPrecisionAllowedRanks[-1]+1)):
+                # print('Clear lst --')
+                resultsRPrecision.append(calcPricision(currQ, currLstRPrecision, relDocs, len(rPrecisionAllowedRanks)))
+                currLstRPrecision = []
             
-            DCG10 = 0
-            DCG10result = [j for j in range subSystemResults[index:index+10]]
-            DCG20 = 0
-            DCG20result = [j for j in range subSystemResults[index:index+20]]
-            dcg = [10,20]
-            for val in dcg:
-                if val == 10:
-                    for doc in q:
-                        if doc in [j[2] for j in DCG10result]:
-                            temp = [j[2] for j in qrels if j[0] == i and i[1] == doc][0]
-                            if int([j[3] for j in DCG10result if j[2] == doc][0]) == 1
-                                DCG10 += temp
-                            else:
-                                DCG10 += temp/math.log2(int([j[3] for j in DCG10result if j[2] == doc][0]))
-                    relList = sorted([j[2] for j in qrels if j[0] == i]),reverse=True)
-                    kDCG10 = relList[0]
-                    if len(relList) <= 10:
-                        for k in range(1,len(relList)):
-                            kDCG10 += relList[k] / math.log2(k+1)
-                    else:
-                        for k in range(1,10):
-                            kDCG10 += relList[k] / math.log2(k+1)
-                    nDCG_10.append(DCG10/kDCG10)
+            # AP
+            readDocsCount += 1
+            if(currQ == origQ):
+                if(docReturned in relDocs[currQ]):
+                    relDocsCount += 1
+                    precisions.append(relDocsCount/readDocsCount)
+            else:
+                # print('Query: ', origQ)
+                # print('Precisions: ', precisions)
+
+                if(len(precisions) != 0):
+                    resultsAP.append(sum(precisions)/len(relDocs[origQ]))
+                    # print('AP: ', sum(precisions)/len(relDocs[origQ]))
                 else:
-                    for doc in q:
-                        if doc in [j[2] for j in DCG10result]:
-                            temp = [j[2] for j in qrels if j[0] == i and i[1] == doc][0]
-                            if int([j[3] for j in DCG10result if j[2] == doc][0]) == 1:
-                                DCG20 += temp
-                            else:
-                                DCG20 += temp/math.log2(int([j[3] for j in DCG10result if j[2] == doc][0]))
-                    relList = sorted([j[2] for j in qrels if j[0] == i]),reverse=True)
-                    kDCG20 = relList[0]
-                    if len(relList) <= 20:
-                        for k in range(1,len(relList)):
-                            kDCG20 += relList[k] / math.log2(k+1)
-                    else:
-                        for k in range(1,20):
-                            kDCG20 += relList[k] / math.log2(k+1)
-                    nDCG_20.append(DCG20/kDCG20)
-            index += qrDic[i] 
-        irEvalDF["P@10"] = np.array(P_10)
-        irEvalDF["R@50"] = np.array(R_50)
-        irEvalDF["r-precision"] = np.array(r_precision)
-        irEvalDF["AP"] = np.array(AP)
-        irEvalDF["nDCG@10"] = np.array(nDCG_10)
-        irEvalDF["nDCG@20"] = np.array(nDCG_20)
-        irEvalDF.index = irEvalDF.index + 1
-        irEvalDF.loc["mean"] = irEvalDF.mean()
-        irEval = pd.concat([irEval,irEvalDF],axis = 0)
-    return irEval
-
-def writeToEval(system_results,qrels): #creates the ir_eval.csv file
-    irEval = Eval(system_results,qrels)
-    fileName = "ir_eval.csv"
-    with open(fileName,"w") as file:
-        file.write("system_number,query_number,P@10,R@50,r-precision,AP,nDCG@10,nDCG@20" + "\n")
-    for index, row in irEval.iterrows():
-        with open(fileName,"a") as file:
-            file.write(str(int(row["system_number"])) + "," + str(index) + "," + "{:.3f}".format(row["P@10"]) + "," "{:.3f}".format(row["R@50"]) + "," + "{:.3f}".format(row["r-precision"]) + "," "{:.3f}".format(row["AP"]) + "," + "{:.3f}".format(row["nDCG@10"]) + "," + "{:.3f}".format(row["nDCG@20"]) + "\n")
-
-def makeWord2id(vocab): #creates the words to id dictionary
-    word2id = {}
-    for wId, w in enumerate(vocab):
-        word2id[w] = wId
-    return word2id
-
-def makeCat2id(categories): #creates the categories to id dictionary
-    cat2id = {}
-    for cId, c in enumerate(set(categories)):
-        cat2id[c] = cId
-    return cat2id
-
-writeToEval(system_results,qrels)
-
-quranDic,ntDic,otDic,quranCorpus,ntCorpus,otCorpus = preprocessCorpus(trainData)
-
-def calculateMIandCHI(): #prints the top 10 MI and chi-square scores
-    X , Y , Z = Counter(quranDic) , Counter(ntDic) , Counter(otDic)
-    total = dict(X + Y + Z)
-    quranMI,quranCHI = scoreCorpus(total,quranDic,quranCorpus,ntCorpus,otCorpus)
-    ntMI,ntCHI = scoreCorpus(total,ntDic,quranCorpus,ntCorpus,otCorpus)
-    otMI,otCHI = scoreCorpus(total,otDic,quranCorpus,ntCorpus,otCorpus)
-    print("-----Quran MI------ ")
-    print(sorted(quranMI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-    print("-----Quran CHI------ ")
-    print(sorted(quranCHI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-    print("-----NT MI------ ")
-    print(sorted(ntMI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-    print("-----NT CHI------ ")
-    print(sorted(ntCHI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-    print("-----OT MI------ ")
-    print(sorted(otMI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-    print("-----OT CHI------ ")
-    print(sorted(otCHI.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:10])
-
-ldaVal,topicDicQuran,topicDicNT,topicDicOT = ldaModel(quranCorpus,ntCorpus,otCorpus)
-
-def LDA(): #prints the LDA topic scores
-    topicQuran = sorted(topicDicQuran.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:5]
-    topicNT = sorted(topicDicNT.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:5]
-    topicOT = sorted(topicDicOT.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)[:5]
-    print("topic_id: " + str(topicQuran[0][0]) + ", score: " + str(topicQuran[0][1]))
-    print(ldaVal.print_topic(topicQuran[0][0]))
-    print("topic_id: " + str(topicNT[0][0]) + ", score: " + str(topicNT[0][1]))
-    print(ldaVal.print_topic(topicNT[0][0]))
-    print("topic_id: " + str(topicOT[0][0]) + ", score: " + str(topicOT[0][1]))
-    print(ldaVal.print_topic(topicOT[0][0]))
-    for i in range(5):
-        print("Top "+str(i)+" id in Quran "+str(topicQuran[i][0]))
-        print("Top "+str(i)+" id in NT "+str(topicNT[i][0]))
-        print("Top "+str(i)+" id in OT "+str(topicOT[i][0]))
-
-calculateMIandCHI()
-LDA()
-#Preprocessing data for the models
-docs,cats,vocab = preprocessForSVM(trainData)
-testDocs,testCats,testVocab = preprocessForSVM(test)
-#Creating the train and dev datasets
-trainingData,trainingCategories,develData,develCategories,devIndex = splitTrainAndDev(cats,docs)
-word2id = makeWord2id(vocab)
-cat2id = makeCat2id(cats)
-
-def generateBOW(preprocessedData): #Generates the BOW values
-    matrix = (len(preprocessedData), len(word2id) + 1)
-    outOfVocab = len(word2id)
-    M = dok_matrix(matrix)
-    for docId,doc in enumerate(preprocessedData):
-        for d in doc:
-            M[docId, word2id.get(d,outOfVocab)] += 1
-    return M
-
-def convertToBOW(xData,category): #Converts given data to BOW
-    X = generateBOW(xData)
-    Y = [cat2id[cat] for cat in category]
-    return X,Y
-
-#Create BOW values for the train,dev and test sets
-xTrain , yTrain = convertToBOW(trainingData,trainingCategories)
-xDev,yDev = convertToBOW(develData,develCategories)
-xTest,yTest = convertToBOW(testDocs,testCats)
-
-def svmModel(c,k): #Train SVM model 
-    model = svm.SVC(C=c,kernel = k)
-    model.fit(xTrain,yTrain)
-    yTrainPred = model.predict(xTrain)
-    yDevPred = model.predict(xDev)
-    yTestPred = model.predict(xTest)
-    trainError = accuracy(yTrain,yTrainPred,cat2id)
-    devError = accuracy(yDev,yDevPred,cat2id)
-    testError = accuracy(yTest,yTestPred,cat2id)
-    return yDevPred,trainError,devError,testError
-
-def improveAccuracy(): #Decision Tree Classifier Model
-    model = DecisionTreeClassifier(random_state=0)
-    model.fit(xTrain,yTrain)
-    yTrainPred = model.predict(xTrain)
-    yDevPred = model.predict(xDev)
-    yTestPred = model.predict(xTest)
-    trainError = accuracy(yTrain,yTrainPred,cat2id)
-    devError = accuracy(yDev,yDevPred,cat2id)
-    testError = accuracy(yTest,yTestPred,cat2id)
-    print(trainError)
-    print(devError)
-    print(testError)
-
-def improveAccuracyLR(): #Logistic Regression on OneVsRestClassifierModel
-    model = OneVsRestClassifier(LogisticRegression(random_state = 0))
-    clf = model.fit(xTrain,yTrain)
-    clf.fit(xTrain,yTrain)
-    yTrainPred = clf.predict(xTrain)
-    yDevPred = clf.predict(xDev)
-    yTestPred = clf.predict(xTest)
-    trainError = accuracy(yTrain,yTrainPred,cat2id)
-    devError = accuracy(yDev,yDevPred,cat2id)
-    testError = accuracy(yTest,yTestPred,cat2id)
-    print(trainError)
-    print(devError)
-    print(testError)
-
-yDevPredBase,trainErrorBase,devErrorBase,testErrorBase = svmModel(1000,"linear") #Baseline Model
-svmModel(100,"linear")
-svmModel(2000,"linear")
-yDevPredImp,trainErrorImp,devErrorImp,testErrorImp = svmModel(1000,"rbf") #Most Improved Model
-
-improveAccuracy()
-improveAccuracyLR()
-
-def writeClassification(): #Write to classification.csv
-    with open("classification.csv","w") as file:
-        file.write("system,split,p-quran,r-quran,f-quran,p-ot,r-ot,f-ot,p-nt,r-nt,f-nt,p-macro,r-macro,f-macro" + "\n")
-        file.write("baseline,train," + ",".join(trainErrorBase) + "\n")
-        file.write("baseline,dev," + ",".join(devErrorBase) + "\n")
-        file.write("baseline,test," + ",".join(testErrorBase) + "\n")
-        file.write("improved,train," + ",".join(trainErrorImp) + "\n")
-        file.write("improved,dev," + ",".join(devErrorImp) + "\n")
-        file.write("improved,test," + ",".join(testErrorImp) + "\n")
-
-def countIncorrect():#Count incorrect predictions by the baseline model
-    incorrectVals = incorrect(yDevPredBase,yDev)
-    for i in incorrectVals[:3]:
-        print(docs[devIndex[i]])
-        print("predicted category: " + list(cat2id.keys())[list(cat2id.values()).index(yDevPredBase[i])])
-        print("true category: " + list(cat2id.keys())[list(cat2id.values()).index(yDev[i])])
-
-writeClassification()
-countIncorrect()
-print(sum(x.count("muhammad") for x in quranCorpus))
-print(sum(x.count("muhammad") for x in ntCorpus))
-print(sum(x.count("muhammad") for x in otCorpus))
-""" print("---------")
-print(sum(x.count("deliv") for x in quranCorpus))
-print(sum(x.count("deliv") for x in ntCorpus))
-print(sum(x.count("deliv") for x in otCorpus))
-print("---------")
-print(sum(x.count("set") for x in quranCorpus))
-print(sum(x.count("set") for x in ntCorpus))
-print(sum(x.count("set") for x in otCorpus)) """
-
-
-
-
+                    resultsAP.append(0.0)
                 
+                origQ = currQ
+                precisions = []
+                readDocsCount, relDocsCount = 1, 0
+                if(docReturned in relDocs[currQ]):
+                    relDocsCount += 1
+                    precisions.append(relDocsCount/readDocsCount)
+
+            # nDCG@10
+            if(rank in dcg10AllowedRanks):
+                currLstnDCG_10.append(docReturned)
+            elif(rank == 11):
+                resultsNDCG_10.append(calcNDCG(currLstnDCG_10, relevancePerQueryPerDoc[currQ]))
+                currLstnDCG_10 = []
+
+            # nDCG@20
+            if(rank in dcg20AllowedRanks):
+                currLstnDCG_20.append(docReturned)
+            elif(rank == 21):
+                resultsNDCG_20.append(calcNDCG(currLstnDCG_20, relevancePerQueryPerDoc[currQ]))
+                currLstnDCG_20 = []
+
+        # Calculating AP for the last query of the last system
+        if(len(precisions) != 0):
+            resultsAP.append(sum(precisions)/len(relDocs[origQ]))
+        else:
+            resultsAP.append(0)
+
+    # print("Results precision: ", resultsPrecision)
+    # print("Len: ", len(resultsPrecision))
+
+    # print("Results recall: ", resultsRecall)
+    # print("Len: ", len(resultsRecall))
+
+    # print("Results R precision: ", resultsRPrecision)
+    # print("Len: ", len(resultsRPrecision))
+
+    # print("Results AP: ", resultsAP)
+    # print("Len: ", len(resultsAP))
+
+    # print("Results nDCG@10: ", resultsNDCG_10)
+    # print("Len: ", len(resultsNDCG_10))
+
+    # print("Results nDCG@20: ", resultsNDCG_20)
+    # print("Len: ", len(resultsNDCG_20))
+
+    generateIR_EVAL_File(resultsPrecision, resultsRecall, resultsRPrecision, resultsAP, resultsNDCG_10, resultsNDCG_20)
+
+# Method to count the frequency of term in verses
+def countTerms(verses, term):
+    count = 0
+    for verse in verses:
+        if(term in verse):
+            count += 1
+    return count
+
+# Method to get the remaining corpuses
+def getOther2Corpus(targetCorpus):
+    return [c for c in ['ot', 'nt', 'quran'] if c != targetCorpus]
+    
+# Method read and process the data
+def readData(loc_training_corpora, stopWords):
+    
+    terms = set()
+    data = {'ot': [], 'nt': [], 'quran': []}
+    
+    # Using readlines()
+    file1 = open(loc_training_corpora, 'r')
+    lines = file1.readlines()
+    N = len(lines)
+
+    # Strips the newline character
+    for line in lines:
+        lst = caseFolding(line) # Case Folding
+        lst = stopping(lst, stopWords) # Stopping
+        lst = stemming(lst) # Stemming
+        if(lst[0] == 'ot'):
+            data['ot'].append(lst[1:])
+        elif(lst[0] == 'nt'):
+            data['nt'].append(lst[1:])
+        elif(lst[0] == 'quran'):
+            data['quran'].append(lst[1:])
+        for term in lst[1:]:
+            terms.add(term)
+    
+    # print('Terms: ', terms)
+    # print('Len: ', len(terms))
+    return data, terms, N
+
+# Method read and process the data
+def readDataTextClassification(loc_training_corpora):
+    
+    terms = set()
+    data = []
+    
+    # Using readlines()
+    file1 = open(loc_training_corpora, 'r')
+    lines = file1.readlines()
+    N = len(lines)
+
+    # Strips the newline character
+    for line in lines:
+        lst = caseFolding(line) # Case Folding
+        data.append(lst)
+        for term in lst[1:]:
+            terms.add(term)
+    
+    # print('Len data: ', len(data))
+    # print('Len unique terms: ', len(terms))
+    return data, list(terms)
+
+# Method to calculate the Corpus score
+def calcScore(probabilities):
+    scores = [0]*20
+    for lst in probabilities:
+        for (x, y) in lst:
+            scores[x] += y
+    
+    for i in range(len(scores)):
+        scores[i] = scores[i] / len(probabilities)
+    
+    return scores
+
+# Method for Task 2 - TEXT ANALYSIS
+def textAnalysis(data, terms, N):
+    print('----- Starting Text Analysis -----')
+
+    corpuses = ['quran', 'ot', 'nt']
+    MIs = [] # final MIs for all the corpuses for all the terms
+    CHIs = [] # final CHIs for all the corpuses for all the terms
+    
+    for corpus in corpuses:
+        ec_1 = corpus
+        mis = [] # MIs for 1 the corpus
+        chis = [] # CHIs for 1 the corpus
+        print('Target corpus: ', ec_1)
+
+        for term in terms:
+
+            N11 = countTerms(data[ec_1], term)
+
+            # print('term: ', term)
+            # print('Len of target: ', len(data[ec_1]))
+            N01 = len(data[ec_1]) - N11
+
+            # calculating N10 and N00
+
+            otherCorpuses = getOther2Corpus(ec_1)
+            N10 = 0
+            for c in otherCorpuses:
+                N10 += countTerms(data[c], term)
+            N00 = sum([len(data[c]) for c in otherCorpuses]) - N10
+
+            # print('N : ', N)
+            # print('N11: ', N11)
+            # print('N10: ', N10)
+            # print('N01: ', N01)
+            # print('N00: ', N00)
+            
+            N1D = N11 + N10
+            ND1 = N11 + N01
+            N0D = N01 + N00
+            ND0 = N10 + N00
+
+            p1 = ((N11 / N) * math.log2((N * N11) / (N1D * ND1))) if N*N11 != 0 and N1D*ND1 != 0 else 0
+            p2 = ((N01 / N) * math.log2((N * N01) / (N0D * ND1))) if N*N01 != 0 and N0D*ND1 != 0 else 0
+            p3 = ((N10 / N) * math.log2((N * N10) / (N1D * ND0))) if N*N10 != 0 and N1D*ND0 != 0 else 0
+            p4 = ((N00 / N) * math.log2((N * N00) / (N0D * ND0))) if N*N00 != 0 and N0D*ND0 != 0 else 0
+            
+            MI = p1 + p2 + p3 + p4
+            temp = (N11 * N00) - (N10 * N01)
+            numerator = (N11 + N10 + N01 + N00) * np.square(temp)
+            denominator = (N11 + N01) * (N11 + N10) * (N10 + N00) * (N01 + N00)
+            CHI = numerator / denominator if denominator != 0 else 0
+
+            # print('MI: ', MI)
+            # print('CHI: ', CHI)
+
+            mis.append((term, MI))
+            chis.append((term, CHI))
+
+        # print('Len mis: ', len(mis))
+        # print('Len chis: ', len(chis))
+
+        # sorting in descending order
+        mis.sort(key=lambda x: x[1], reverse=True)
+        chis.sort(key=lambda x: x[1], reverse=True)
+        # print(chis[:10])
+
+        MIs.append(mis)
+        CHIs.append(chis)
+
+        # print('Len MIs: ', len(MIs))
+        # print('Len CHIs: ', len(CHIs))
+
+        print('----------------')
+
+
+    print("1st 10 MI values, order - Quran -> OT -> NT")
+    [print('Values: ', mi[:10], '\n') for mi in MIs]
+
+    print("1st 10 CHI values, order - Quran -> OT -> NT")
+    [print('Values: ', chi[:10], '\n') for chi in CHIs]
+
+# Method for Latent Dirichlet Allocation
+def latentDirichletAllocation(data):
+
+    print('----- Starting LDA -----')
+
+    verses = data['ot'] + data['nt'] + data['quran']
+
+    dictionary = Dictionary(verses)
+
+    corpus = [dictionary.doc2bow(verse) for verse in verses]
+
+    lda = LdaModel(corpus, id2word=dictionary, num_topics=20)
+    print('LDA: ', lda)
+
+    overallProbabilities = [lda.get_document_topics(corpus[i]) for i in range(len(verses))]
+    # print('Len Overall Topic Probabilities: ', len(overallProbabilities))
+
+    corpusLenghts = [0] + [len(data[key]) for key in ['ot', 'nt', 'quran']] # length of corpuses
+    # print('Lens: ', corpusLenghts)
+    
+    start = 0
+    end = 0
+    for i in range(len(data.keys())):
+        print('Corpus: ', list(data.keys())[i])
+        start = end
+        end = start + corpusLenghts[i+1]
+        # print('Start: ', start)
+        # print('End: ', end)
+        avg = calcScore(overallProbabilities[start:end])
+        idx = [i for i in range(0, len(avg))]
+        avg, idx = zip(*sorted(zip(avg, idx), reverse=True)) # sorting in descending order, top topic first
+        top5Topics = idx[:5] # top 5 topics
+        
+        topTopic = idx[0]
+        topWords = lda.print_topic(topTopic, 10)
+        print('Top 10 tokens for top topic: ', topWords)
+        print('----')
+
+        # for topTopic in top5Topics:
+        #     topWords = lda.print_topic(topTopic, 10)
+        #     print('Top 10 tokens: ', topWords)
+        #     print('----')
+        
+        # print('-----------------------------------------')
+
+
+    # for topic in lda.print_topics(num_topics=20, num_words=10):
+    #     print(topic)
+
+# Method to generate the bag of words matrix
+def generateSparseMatrix(verses, terms):
+    X = dok_matrix((len(verses), len(terms)))
+    verses = [verse[1:] for verse in verses]
+
+    for i in range(len(verses)):
+        doc = verses[i]
+        freq = Counter(doc) # frequency of each word in the document
+
+        for (word, count) in freq.items():
+            if(word in terms): # checking if word appears in class terms
+                X[i, terms.index(word)] = count
+
+    return X
+
+# Method to calculate the mean
+def calcMean(lst):
+    return sum(lst)/len(lst)
+
+# Method to calculate the metrics like precision, recall, r-precison, etc.
+def calcMetrics(YPred, Ytrue, system, split):
+    print('Writing in the file --')
+
+    precisions = []
+    recalls = []
+    f1_scores = []
+    corpuses = ['quran', 'ot', 'nt']
+
+    for corpus in corpuses:
+
+        indx_pred = [i for i in range(len(YPred)) if YPred[i] == corpus]
+        indx_true = [i for i in range(len(Ytrue)) if Ytrue[i] == corpus]
+
+        matchCount = sum([1 for idx in indx_true if YPred[idx] == corpus])
+        
+        # Precison
+        precision = matchCount/len(indx_pred)
+        precisions.append(round(precision, 3))
+        
+        # Recall
+        recall = matchCount/len(indx_true)
+        recalls.append(round(recall, 3))
+
+        # F1-score
+        F1_score = 2 * precision * recall / (precision + recall)
+        f1_scores.append(round(F1_score, 3))
+
+    macroP = round(calcMean(precisions), 3)
+    macroR = round(calcMean(recalls), 3)
+    macroF1 = round(calcMean(f1_scores), 3)
+
+    row = [[system, split, precisions[0], recalls[0], f1_scores[0], precisions[1], recalls[1], f1_scores[1], precisions[2], recalls[2], f1_scores[2], macroP, macroR, macroF1]]
+
+    # open the file in the write mode
+    with open('classification.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        # writing to the file
+        writer.writerows(row)
+
+# Method to find 3 instances of wrong classification in the development dataset
+def wrongClassifications(X, Ypred, Y):
+    print('Finding wrong classifications in dev dataset --------')
+    count = 0
+    for i in range(len(Ypred)):
+        if(count > 3):
+            break
+        elif(Ypred[i] != Y[i]): # wrong prediction
+            print('Verse: ', X[i])
+            print('Prediction: ', Ypred[i], ' Actual: ', Y[i])
+            count += 1
+
+# Method to do text classification
+def textClassification(locFileTrn, locFileTst):
+
+    print('----- Starting Text Classification -----')
+    
+    data, terms = readDataTextClassification(locFileTrn)
+    random.shuffle(data) # shuffling the data randomly
+
+    # Training dataset
+    TrnVerses = data[ : int(0.9*len(data))] #splitting the dataset in the ratio (9:1)
+    Ytrn = [verse[0] for verse in TrnVerses]
+    
+    # Development dataset
+    DevVerses = data[int(0.9*len(data)) : ]
+    Ydev = [verse[0] for verse in DevVerses]
+
+    # Test dataset
+    TstVerses, _ = readDataTextClassification(locFileTst)
+    Ytst = [verse[0] for verse in TstVerses]
+
+    Xtrn = generateSparseMatrix(TrnVerses, terms)
+    Xdev = generateSparseMatrix(DevVerses, terms)
+    Xtst = generateSparseMatrix(TstVerses, terms)
+
+    # deleting the file incase it exists from before
+    if os.path.exists('classification.csv'):
+        os.remove('classification.csv')
+
+    # generating the file
+    header = [['system', 'split', 'p-quran', 'r-quran', 'f-quran', 'p-ot', 'r-ot', 'f-ot', 'p-nt', 'r-nt', 'f-nt', 'p-macro', 'r-macro', 'f-macro']]
+    with open('classification.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(header) # writing to the file
+
+    # ---------------- BaseLine ----------------
+    svcModel = SVC(C = 1000)
+    print('Model train: ', svcModel)
+    svcModel.fit(Xtrn, Ytrn) # training the model with training dataset
+
+    # Predictions
+    YtrnPred = svcModel.predict(Xtrn)
+    YdevPred = svcModel.predict(Xdev)
+    YtstPred = svcModel.predict(Xtst)
+
+    # finding the 3 wrong classifications in dev test set
+    wrongClassifications(DevVerses, YdevPred, Ydev)
+
+    # calculating the metrics and writing in the file
+    calcMetrics(YtrnPred, Ytrn, 'baseline', 'train')
+    calcMetrics(YdevPred, Ydev, 'baseline', 'dev')
+    calcMetrics(YtstPred, Ytst, 'baseline', 'test')
+
+    # ---------------- Improved ----------------
+    svcModel = SVC(C = 10)
+    print('Model dev: ', svcModel)
+    svcModel.fit(Xtrn, Ytrn) # training the model with training dataset
+
+    # Predictions
+    YtrnPred = svcModel.predict(Xtrn)
+    YdevPred = svcModel.predict(Xdev)
+    YtstPred = svcModel.predict(Xtst)
+
+    # calculating the metrics and writing in the file
+    calcMetrics(YtrnPred, Ytrn, 'improved', 'train')
+    calcMetrics(YdevPred, Ydev, 'improved', 'dev')
+    calcMetrics(YtstPred, Ytst, 'improved', 'test')
+
+    
+
+# --------------------------- Method Calling (for testing) ---------------------------
+
+# EVAL('qrels.csv', 'system_results.csv')
+
+# reading the stop words
+# f = open('stop_words.txt', "r")
+# stopWords = f.read().lower().split()
+# f.close()
+
+# data, terms, N = readData('train_and_dev.txt', stopWords)
+# textAnalysis(data, terms, N)
+# latentDirichletAllocation(data)
+
+# textClassification('train_and_dev.txt', 'test.txt')
+
+# ------- Test the DCG method with values from the lecture --------
+
+# docsReturned = [11, 22, 33, 44, 55, 66, 77, 88, 99, 1010]
+# relevancePerDocs = [(11, 3), (22, 2), (33, 3), (44, 0), (55, 0), (66, 1), (77, 2), (88, 2), (99, 3), (1010, 0)]
+
+# calcNDCG(docsReturned, relevancePerDocs)
+
+
+# ------------------------------------------ Menu ------------------------------------------
+
+flag = True
+while(flag):
+
+    choice = input('Enter 1: IR Evaluation, 2: Text Analysis, 3: Text Classification => ')
+    if(choice == '1'):
+        qrelsLoc = input('Provide location of qrels.csv file => ')
+        system_resultsLoc = input('Provide location of system_results.csv file => ')
+        EVAL(qrelsLoc, system_resultsLoc)
+    elif(choice == '2'):
+        dataLoc = input('Provide location of train_and_dev.txt file => ')
+        stopWordsLoc = input('Provide location of stopwords.txt file => ')
+        
+        # reading the stop words
+        f = open(stopWordsLoc, "r")
+        stopWords = f.read().lower().split()
+        f.close()
+
+        data, terms, N = readData(dataLoc, stopWords)
+        textAnalysis(data, terms, N)
+        latentDirichletAllocation(data)
+    elif(choice == '3'):
+        dataLoc = input('Provide location of train_and_dev.txt file => ')
+        testLoc = input('Provide location of test.txt file => ')
+        textClassification(dataLoc, testLoc)
+
+    runAgain = input('Enter 1: To run again, 2: Exit => ')
+    if(runAgain != '1'):
+        flag = False
