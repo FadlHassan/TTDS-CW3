@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>TTDS CW3 Song Search</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins">
+<link rel="stylesheet" href="https://www.w3schools.com/lib/w3-colors-camo.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="main3.css">
+
+
+<style>
+body,h1,h2,h3,h4,h5 {font-family: "Poppins", sans-serif}
+body {font-size:16px;}
+.w3-half img{margin-bottom:-6px;margin-top:16px;opacity:0.8;cursor:pointer}
+.w3-half img:hover{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- Sidebar/menu -->
+<nav class="w3-sidebar w3-camo-black w3-collapse w3-top w3-large w3-padding" style="z-index:3;width:300px;font-weight:bold;" id="mySidebar"><br>
+  <a href="javascript:void(0)" onclick="w3_close()" class="w3-button w3-hide-large w3-display-topleft" style="width:100%;font-size:22px">Close Menu</a>
+  <div class="w3-container">
+    <h3 class="w3-padding-64"><b>TTDS<br>CW3</b></h3>
+  </div>
+  <div class="w3-bar-block">
+    <a href="#" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">Overview</a>
+    <a href="#showcase" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">Explore</a>
+    <a href="#services" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">Database</a>
+    <a href="#designers" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">Analytics</a>
+    <a href="#packages" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">History</a>
+    <a href="#contact" onclick="w3_close()" class="w3-bar-item w3-button w3-hover-white">Settings</a>
+  </div>
+</nav>
+
+<!-- Top menu on small screens -->
+<header class="w3-container w3-top w3-hide-large w3-grey w3-xlarge w3-padding">
+  <a href="javascript:void(0)" class="w3-button w3-grey w3-margin-right" onclick="w3_open()">☰</a>
+  <span>Company Name</span>
+</header>
+
+<!-- Overlay effect when opening sidebar on small screens -->
+<div class="w3-overlay w3-hide-large" onclick="w3_close()" style="cursor:pointer" title="close side menu" id="myOverlay"></div>
+
+<!-- header -->
+<div class="w3-top" style="width: 100%;margin-left:300px;margin-right:40px">
+  <div class="w3-bar w3-camo-black w3-card">
+    <div class="w3-row">
+
+        <div class="w3-col w3-container" style="width:40%;margin-top:12px;margin-bottom:20px;">
+          <!-- <form class="example" action="action_page.php">
+            <input type="text" placeholder="Search your song...." name="search">
+            <button type="submit"><i class="fa fa-search"></i></button>
+          </form> -->
+
+          <div class="searchBar">
+  <input id="searchQueryInput" type="text" name="searchQueryInput" placeholder="Search" value="" />
+  <button id="searchQuerySubmit" type="submit" name="searchQuerySubmit">
+    <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="#666666" d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" />
+    </svg>
+  </button>
+</div>
+
+
+        </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- !PAGE CONTENT! -->
+<div class="w3-main" style="margin-left:340px;margin-right:40px">
+
+
+  <!-- Photo grid (modal) -->
+
+  <style>
+    .bordered {
+      width: 200px;
+      height: 150px;
+      padding: 20px;
+      border: 4px solid grey;
+      border-radius: 8px;
+      background: lightblue
+    }
+  </style>
+
+
+  <div class="w3-row-padding" style="padding-top: 100px;padding-left: 80px">
+
+    <div class="w3-col s4" style="width:25%">
+
+      <div class="bordered">
+
+        <div class="w3-center">
+          <p>Songs Searched</p>
+          <h4>60</h4>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="w3-col s4" style="width:25%">
+
+      <div class="bordered">
+
+      <div class="w3-center">
+        <p>Results Generated</p>
+        <h4>165700</h4>
+      </div>
+
+    </div>
+
+    </div>
+
+    <div class="w3-col s4" style="width:25%">
+
+      <div class="bordered">
+
+      <div class="w3-center">
+        <p>Songs Following</p>
+        <h4>43</h4>
+      </div>
+
+      </div>
+
+    </div>
+
+    <div class="w3-col s4" style="width:25%">
+
+      <div class="bordered">
+
+      <div class="w3-center">
+        <p>Artists Following</p>
+        <h4>5</h4>
+      </div>
+
+    </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Modal for full size images on click-->
+  <!-- <div id="modal01" class="w3-modal w3-black" style="padding-top:0" onclick="this.style.display='none'">
+    <span class="w3-button w3-black w3-xxlarge w3-display-topright">×</span>
+    <div class="w3-modal-content w3-animate-zoom w3-center w3-transparent w3-padding-64">
+      <img id="img01" class="w3-image">
+      <p id="caption"></p>
+    </div>
+  </div> -->
+
+  <!-- Services -->
+  <div class="w3-container" id="services" style="margin-top:75px">
+    <h4 class="w3-xlarge w3-text-grey"><b>Top 10 trending songs</b></h4>
+    <h5 class="w3-small w3-text-grey"><b>As of 25th Feb 2022, 9:00 AM</b></h5>
+    <hr style="width:50px;border:5px solid grey" class="w3-round">
+
+
+
+    <div class="w3-row">
+
+      <div class="w3-col w3-container" style="width:60%; padding-top: 20px">
+        <table class="w3-table w3-bordered" style="border:1px solid black;margin-left:auto;margin-right:auto;">
+            <tr>
+              <th>Song Name</th>
+              <th>Artist Name</th>
+              <th>Searches</th>
+            </tr>
+            <tr>
+              <td>Despacito</td>
+              <td>Daddy Yankee</td>
+              <td>40</td>
+            </tr>
+            <tr>
+              <td>Peaches</td>
+              <td>Justin Bieber</td>
+              <td>50</td>
+            </tr>
+            <tr>
+              <td>Going Bad</td>
+              <td>Meek Mill</td>
+              <td>75</td>
+            </tr>
+            <tr>
+              <td>Going Bad</td>
+              <td>Meek Mill</td>
+              <td>75</td>
+            </tr>
+            <tr>
+              <td>Going Bad</td>
+              <td>Meek Mill</td>
+              <td>75</td>
+            </tr>
+            <tr>
+              <td>Going Bad</td>
+              <td>Meek Mill</td>
+              <td>75</td>
+            </tr>
+            <tr>
+              <td>Going Bad</td>
+              <td>Meek Mill</td>
+              <td>75</td>
+            </tr>
+
+        </table>
+      </div>
+
+      <div class="w3-col s4" style="padding-top: 20px; padding-left: 50px">
+
+        <div class="w3-center" style="margin-bottom:40px">
+          <p>Average Response Time</p>
+          <p>14 seconds</p>
+        </div>
+
+        <hr style="width:100%;border:1px solid grey" class="w3-round">
+
+        <div class="w3-center" style="margin-bottom:40px">
+          <p>Average Response Time</p>
+          <p>14 seconds</p>
+        </div>
+
+        <hr style="width:100%;border:1px solid grey" class="w3-round">
+
+        <div class="w3-center" style="margin-bottom:40px">
+          <p>Average Response Time</p>
+          <p>14 seconds</p>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="w3-container" id="services" style="margin-top:75px">
+    <h4 class="w3-xlarge w3-text-grey"><b>Other information</b></h4>
+    <h5 class="w3-small w3-text-grey"><b>As of 26th Feb 2022, 11:00 AM</b></h5>
+    <hr style="width:50px;border:5px solid grey" class="w3-round">
+  </div>
+
+  <div class="w3-row">
+
+    <div class="w3-col w3-container" style="width:50%; padding-top: 20px; padding-left: 32px; padding-bottom: 20px">
+      <table class="w3-table w3-bordered" style="margin-left:auto;margin-right:auto;">
+          <tr>
+            <th>Last song search</th>
+            <th></th>
+          </tr>
+          <tr>
+            <td>Despacito</td>
+            <td>Daddy Yankee</td>
+          </tr>
+          <tr>
+            <td>Peaches</td>
+            <td>Justin Bieber</td>
+          </tr>
+          <tr>
+            <td>Going Bad</td>
+            <td>Meek Mill</td>
+          </tr>
+          <tr>
+            <td>Going Bad</td>
+            <td>Meek Mill</td>
+          </tr>
+          <tr>
+            <td>Going Bad</td>
+            <td>Meek Mill</td>
+          </tr>
+      </table>
+    </div>
+
+    <div class="w3-col w3-container" style="width:50%; padding-top: 20px; padding-left: 32px; padding-bottom: 20px">
+      <table class="w3-table w3-bordered" style="margin-left:auto;margin-right:auto;">
+          <tr>
+            <th>DEMO</th>
+            <th>DEMO</th>
+          </tr>
+          <tr>
+            <td>..</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td>...</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td>...</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td>...</td>
+            <td>...</td>
+          </tr>
+          <tr>
+            <td>...</td>
+            <td>...</td>
+          </tr>
+      </table>
+    </div>
+
+
+  </div>
+
+</div>
+
+  <!--START HERE SAMPLE CODE
+
+  END SAMPLE CODE HERE-->
+
+
+<!-- End page content -->
+</div>
+
+<!-- W3.CSS Container -->
+<!-- <div class="w3-light-grey w3-container w3-padding-32" style="margin-top:75px;padding-right:58px"><p class="w3-right">Powered by <a href="https://www.w3schools.com/w3css/default.asp" title="W3.CSS" target="_blank" class="w3-hover-opacity">w3.css</a></p></div> -->
+
+<script>
+// Script to open and close sidebar
+function w3_open() {
+  document.getElementById("mySidebar").style.display = "block";
+  document.getElementById("myOverlay").style.display = "block";
+}
+
+function w3_close() {
+  document.getElementById("mySidebar").style.display = "none";
+  document.getElementById("myOverlay").style.display = "none";
+}
+
+// Modal Image Gallery
+function onClick(element) {
+  document.getElementById("img01").src = element.src;
+  document.getElementById("modal01").style.display = "block";
+  var captionText = document.getElementById("caption");
+  captionText.innerHTML = element.alt;
+}
+</script>
+
+</body>
+</html>
