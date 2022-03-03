@@ -95,7 +95,7 @@ def main():
         terms = readDataTextClassification(tracks)
         print("----- Creating the Inverted Index -----")
         inverted, totalNumberOfDocuments = invertedIndex(terms, tracks)
-        processingRankQueries(totalNumberOfDocuments,inverted)
+#         processingRankQueries(totalNumberOfDocuments,inverted)
 
 
 
