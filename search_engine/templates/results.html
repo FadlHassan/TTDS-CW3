@@ -2,13 +2,14 @@
 {% load static %}
 {% block page %}
     <div class="results-container">
+        <p>Hello World!</p>
     {% for v in results %}
-        <div class="results-{{c}}">
-        <p class="id-{{ forloop.counter0 }}">{{v.photoid}}</p>
-        <p class="name-{{ forloop.counter0 }}">{{v.name}}</p>
-        <p class="artist-{{ forloop.counter0 }}">{{v.artist}}</p>
-        <p class="genre-{{ forloop.counter0 }}">{{v.genre}}</p>
-        <p class="match-{{ forloop.counter0 }}">{{v.match}}</p>
+<!--        <div class="results-{{c}}">-->
+<!--&lt;!&ndash;        <p class="id-{{ forloop.counter0 }}"></p>&ndash;&gt;-->
+<!--        <p class="title-{{ forloop.counter0 }}">{{ forloop.counter0 }}</p>-->
+<!--        <p class="lyrics-{{ forloop.counter0 }}">{{ forloop.counter0 }}</p>-->
+<!--        <p class="artist-{{ forloop.counter0 }}">{{ forloop.counter0 }}</p>-->
+<!--        <p class="match-{{ forloop.counter0 }}">{{v.match}}</p>-->
         </div>
     {% endfor %}
     </div>

@@ -95,7 +95,7 @@ def main():
         terms = readDataTextClassification(tracks)
         print("----- Creating the Inverted Index -----")
         inverted, totalNumberOfDocuments = invertedIndex(terms, tracks)
-        processingRankQueries(totalNumberOfDocuments,inverted)
+#         processingRankQueries(totalNumberOfDocuments,inverted)
 
 
 
@@ -108,6 +108,27 @@ def main():
         # select_tracks_by_artist(conn, "Post Malone")
 
 
+def checkIfSongExists(song, conn) {
+    """
+    Query tracks by artist
+    :param song: song object
+    :param conn: the Connection object
+    :return:
+    """
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM tracks WHERE title =? AND artist =?", (song.title, song.artist,))
+
+    rows = cur.fetchall()
+
+    if(len(rows) == 0) {
+        print('-- Song not present, adding it')
+        track = (song.title, song.lyrics, song.artist)
+        create_track(conn, track)
+    }
+    else {
+        print('-- Song already present')
+    }
+}
 
 def searchLyrics(searchedKeyword):
 
