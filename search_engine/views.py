@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from .models import Song
 
-def home(request):
+def display_home(request):
     return render(request, "home.html")
 
 def display_search(request, lyric):
